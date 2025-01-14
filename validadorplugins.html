@@ -29,8 +29,6 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        const cryptoKey = 'pacocalostpl2025bonito'; // Chave para criptografar/descriptografar com AES
-
         // Função para criptografar a chave com SHA-256
         function hashKey(key) {
             return CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex); // SHA-256 e codificado em Hexadecimal (minúsculo)
@@ -43,14 +41,14 @@
             const pl = urlParams.get('pl');
 
             if (!key || pl !== 'lostguard') {
-                document.getElementById("status").innerHTML = "Chave não fornecida ou plugin incorreto!";
+                // Chave não fornecida ou plugin incorreto
+                document.location.href = 'response://false';
                 return;
             }
 
             try {
                 // Criptografa a chave com SHA-256
                 const hashedKey = hashKey(key);
-                alert(hashedKey);
 
                 // Agora, buscamos no Firebase usando a chave criptografada
                 const ref = database.ref(`acessantes/${hashedKey}`);
@@ -58,7 +56,8 @@
                 const snapshot = await ref.once('value');
 
                 if (!snapshot.exists()) {
-                    document.getElementById("status").innerHTML = "Chave não encontrada no Firebase!";
+                    // Chave não encontrada no Firebase
+                    document.location.href = 'response://false';
                     return;
                 }
 
@@ -68,13 +67,8 @@
                 const dataDaAtivacao = data.dataDaAtivacao; // Formato esperado: 'dd/mm/aaaa'
                 const tempovalido = parseInt(data.tempovalido.toString());
 
-                alert(dataDaAtivacao);
-                alert(tempovalido);
-
                 // Calcular a data de expiração
                 let [dia, mes, ano] = dataDaAtivacao.split('/').map(Number);
-
-                // Criar a data de ativação (lembrando que os meses começam do 0, por isso subtrai 1)
                 let dataInicial = new Date(ano, mes - 1, dia); // Correção do mês com `mes - 1`
 
                 // Adicionar o tempo válido em meses
@@ -89,22 +83,17 @@
                 // Verificar a data de expiração
                 const hoje = new Date();
 
-                // Mostrar a data inicial e a data de expiração em formato legível
-                alert(`Hoje: ${hoje.toLocaleDateString('pt-BR')}`);
-                alert(`Data de Expiração: ${dataInicial.toLocaleDateString('pt-BR')}`);
-
                 // Checa se a chave expirou
                 if (hoje >= dataInicial) {
-                    // Se expirou, enviar resposta "false" com a data de expiração
-                    document.getElementById("status").innerHTML = `Chave expirada, validade até: ${dataInicial.toLocaleDateString('pt-BR')}`;
-                    document.location.href = `response://expirada?dataExpiracao=${encodeURIComponent(dataInicial.toLocaleDateString('pt-BR'))}`;
+                    // Se expirou, retornar false
+                    document.location.href = 'response://false';
                 } else {
-                    // Caso a chave seja válida, enviar resposta "true" com a data de expiração
-                    document.getElementById("status").innerHTML = `Chave válida até: ${dataInicial.toLocaleDateString('pt-BR')}`;
-                    document.location.href = `response://valida?dataExpiracao=${encodeURIComponent(dataInicial.toLocaleDateString('pt-BR'))}`;
+                    // Caso a chave seja válida, retornar true
+                    document.location.href = 'response://true';
                 }
             } catch (error) {
-                document.getElementById("status").innerHTML = "Erro ao verificar a chave: " + error.message;
+                // Em caso de erro ao verificar a chave
+                document.location.href = 'response://false';
                 console.error(error);
             }
         }
