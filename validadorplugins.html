@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador de Plugins</title>
+    <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
+</head>
+<body>
+    <h1>Validador de Plugin LostGuard</h1>
+    <div id="status"></div>
+
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBp1hYxc7eXgifApPqq5GBB2bbO48ycHSw",
+            authDomain: "plugin-lost-guard.firebaseapp.com",
+            databaseURL: "https://plugin-lost-guard-default-rtdb.firebaseio.com",
+            projectId: "plugin-lost-guard",
+            storageBucket: "plugin-lost-guard.firebasestorage.app",
+            messagingSenderId: "430821247375",
+            appId: "1:430821247375:web:8bc18060ecc0534cd823fa",
+            measurementId: "G-FYDWMQ2XVF"
+        };
+
+        // Inicialização do Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        const cryptoKey = 'pacocalostpl2025bonito'; // Chave para criptografar/descriptografar com AES
+
+       
+
+
+        // Função para criptografar a chave com SHA-256
+        function hashKey(key) {
+            return CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex); // SHA-256 e codificado em Hexadecimal (minúsculo)
+        }
+
+        // Função para validar a chave do plugin
+// Função para validar a chave do plugin
+async function validarChave() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const key = urlParams.get('key');
+    const pl = urlParams.get('pl');
+
+    if (!key || pl !== 'lostguard') {
+        document.getElementById("status").innerHTML = "Chave não fornecida ou plugin incorreto!";
+        return;
+    }
+
+    try {
+        // Criptografa a chave com SHA-256
+        const hashedKey = hashKey(key);
+        alert(hashedKey);
+
+        // Agora, buscamos no Firebase usando a chave criptografada
+        const ref = database.ref(`acessantes/${hashedKey}`);
+        
+        const snapshot = await ref.once('value');
+
+        if (!snapshot.exists()) {
+            document.getElementById("status").innerHTML = "Chave não encontrada no Firebase!";
+            return;
+        }
+
+        const data = snapshot.val();
+
+        // Descriptografar os dados de ativação e tempo válido
+        const dataDaAtivacao = data.dataDaAtivacao; // Formato esperado: 'dd/mm/aaaa'
+        const tempovalido = parseInt(data.tempovalido.toString());
+
+        alert(dataDaAtivacao);
+        alert(tempovalido);
+
+        // Calcular a data de expiração
+        let [dia, mes, ano] = dataDaAtivacao.split('/').map(Number);
+
+        // Criar a data de ativação (lembrando que os meses começam do 0, por isso subtrai 1)
+        let dataInicial = new Date(ano, mes - 1, dia); // Correção do mês com `mes - 1`
+
+        // Adicionar o tempo válido em meses
+        dataInicial.setMonth(dataInicial.getMonth() + tempovalido);
+
+        // Ajustar a data para garantir que o dia não seja redefinido
+        const ultimoDiaDoMes = new Date(dataInicial.getFullYear(), dataInicial.getMonth() + 1, 0).getDate();
+        if (dataInicial.getDate() > ultimoDiaDoMes) {
+            dataInicial.setDate(ultimoDiaDoMes);
+        }
+
+        // Verificar a data de expiração
+        const hoje = new Date();
+
+        // Mostrar a data inicial e a data de expiração em formato legível
+        alert(`Hoje: ${hoje.toLocaleDateString()}`);
+        alert(`Data de Expiração: ${dataInicial.toLocaleDateString()}`);
+
+        // Checa se a chave expirou
+        if (hoje >= dataInicial) {
+            // Se expirou, enviar resposta "false" com a data de expiração
+            document.getElementById("status").innerHTML = `Chave expirada, validade até: ${dataInicial.toLocaleDateString()}`;
+            document.location.href = `response://expirada?dataExpiracao=${dataInicial.toLocaleDateString()}`;
+        } else {
+            // Caso a chave seja válida, enviar resposta "true" com a data de expiração
+            document.getElementById("status").innerHTML = `Chave válida até: ${dataInicial.toLocaleDateString()}`;
+            document.location.href = `response://valida?dataExpiracao=${dataInicial.toLocaleDateString()}`;
+        }
+    } catch (error) {
+        document.getElementById("status").innerHTML = "Erro ao verificar a chave: " + error.message;
+        console.error(error);
+    }
+}
+
+
+
+
+
+
+        // Iniciar a verificação
+        validarChave();
+    </script>
+</body>
+</html>
