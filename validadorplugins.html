@@ -42,7 +42,7 @@
 
             if (!key || pl !== 'lostguard') {
                 // Chave não fornecida ou plugin incorreto
-                document.location.href = 'response://false';
+                document.body.innerText = 'false';
                 return;
             }
 
@@ -50,50 +50,31 @@
                 // Criptografa a chave com SHA-256
                 const hashedKey = hashKey(key);
 
-                // Agora, buscamos no Firebase usando a chave criptografada
+                // Buscar no Firebase usando a chave criptografada
                 const ref = database.ref(`acessantes/${hashedKey}`);
-                
                 const snapshot = await ref.once('value');
 
                 if (!snapshot.exists()) {
                     // Chave não encontrada no Firebase
-                    document.location.href = 'response://false';
+                    document.body.innerText = 'false';
                     return;
                 }
 
                 const data = snapshot.val();
-
-                // Descriptografar os dados de ativação e tempo válido
-                const dataDaAtivacao = data.dataDaAtivacao; // Formato esperado: 'dd/mm/aaaa'
+                const dataDaAtivacao = data.dataDaAtivacao; // 'dd/mm/aaaa'
                 const tempovalido = parseInt(data.tempovalido.toString());
 
-                // Calcular a data de expiração
                 let [dia, mes, ano] = dataDaAtivacao.split('/').map(Number);
-                let dataInicial = new Date(ano, mes - 1, dia); // Correção do mês com `mes - 1`
-
-                // Adicionar o tempo válido em meses
+                let dataInicial = new Date(ano, mes - 1, dia);
                 dataInicial.setMonth(dataInicial.getMonth() + tempovalido);
 
-                // Ajustar a data para garantir que o dia não seja redefinido
-                const ultimoDiaDoMes = new Date(dataInicial.getFullYear(), dataInicial.getMonth() + 1, 0).getDate();
-                if (dataInicial.getDate() > ultimoDiaDoMes) {
-                    dataInicial.setDate(ultimoDiaDoMes);
-                }
-
-                // Verificar a data de expiração
                 const hoje = new Date();
 
-                // Checa se a chave expirou
-                if (hoje >= dataInicial) {
-                    // Se expirou, retornar false
-                    document.location.href = 'response://false';
-                } else {
-                    // Caso a chave seja válida, retornar true
-                    document.location.href = 'response://true';
-                }
+                // Retornar true se a chave estiver válida, false caso contrário
+                document.body.innerText = hoje < dataInicial ? 'true' : 'false';
             } catch (error) {
-                // Em caso de erro ao verificar a chave
-                document.location.href = 'response://false';
+                // Em caso de erro
+                document.body.innerText = 'false';
                 console.error(error);
             }
         }
