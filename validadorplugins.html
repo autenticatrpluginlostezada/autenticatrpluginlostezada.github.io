@@ -9,78 +9,70 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
 </head>
 <body>
-    <h1>Validador de Plugin LostGuard</h1>
-    <div id="status"></div>
+<script>
+    // Configuração do Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyBp1hYxc7eXgifApPqq5GBB2bbO48ycHSw",
+        authDomain: "plugin-lost-guard.firebaseapp.com",
+        databaseURL: "https://plugin-lost-guard-default-rtdb.firebaseio.com",
+        projectId: "plugin-lost-guard",
+        storageBucket: "plugin-lost-guard.firebasestorage.app",
+        messagingSenderId: "430821247375",
+        appId: "1:430821247375:web:8bc18060ecc0534cd823fa",
+        measurementId: "G-FYDWMQ2XVF"
+    };
 
-    <script>
-        // Configuração do Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBp1hYxc7eXgifApPqq5GBB2bbO48ycHSw",
-            authDomain: "plugin-lost-guard.firebaseapp.com",
-            databaseURL: "https://plugin-lost-guard-default-rtdb.firebaseio.com",
-            projectId: "plugin-lost-guard",
-            storageBucket: "plugin-lost-guard.firebasestorage.app",
-            messagingSenderId: "430821247375",
-            appId: "1:430821247375:web:8bc18060ecc0534cd823fa",
-            measurementId: "G-FYDWMQ2XVF"
-        };
+    // Inicialização do Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-        // Inicialização do Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+    // Função para criptografar a chave com SHA-256
+    function hashKey(key) {
+        return CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex);
+    }
 
-        // Função para criptografar a chave com SHA-256
-        function hashKey(key) {
-            return CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex); // SHA-256 e codificado em Hexadecimal (minúsculo)
+    // Função para validar a chave do plugin
+    async function validarChave() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const key = urlParams.get('key');
+        const pl = urlParams.get('pl');
+
+        if (!key || pl !== 'lostguard') {
+            // Chave inválida ou plugin incorreto
+            document.body.innerText = 'false';
+            return;
         }
 
-        // Função para validar a chave do plugin
-        async function validarChave() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const key = urlParams.get('key');
-            const pl = urlParams.get('pl');
+        try {
+            const hashedKey = hashKey(key);
+            const ref = database.ref(`acessantes/${hashedKey}`);
+            const snapshot = await ref.once('value');
 
-            if (!key || pl !== 'lostguard') {
-                // Chave não fornecida ou plugin incorreto
+            if (!snapshot.exists()) {
+                // Chave não encontrada
                 document.body.innerText = 'false';
                 return;
             }
 
-            try {
-                // Criptografa a chave com SHA-256
-                const hashedKey = hashKey(key);
+            const data = snapshot.val();
+            const dataDaAtivacao = data.dataDaAtivacao;
+            const tempovalido = parseInt(data.tempovalido);
 
-                // Buscar no Firebase usando a chave criptografada
-                const ref = database.ref(`acessantes/${hashedKey}`);
-                const snapshot = await ref.once('value');
+            const [dia, mes, ano] = dataDaAtivacao.split('/').map(Number);
+            const dataInicial = new Date(ano, mes - 1, dia);
+            dataInicial.setMonth(dataInicial.getMonth() + tempovalido);
 
-                if (!snapshot.exists()) {
-                    // Chave não encontrada no Firebase
-                    document.body.innerText = 'false';
-                    return;
-                }
-
-                const data = snapshot.val();
-                const dataDaAtivacao = data.dataDaAtivacao; // 'dd/mm/aaaa'
-                const tempovalido = parseInt(data.tempovalido.toString());
-
-                let [dia, mes, ano] = dataDaAtivacao.split('/').map(Number);
-                let dataInicial = new Date(ano, mes - 1, dia);
-                dataInicial.setMonth(dataInicial.getMonth() + tempovalido);
-
-                const hoje = new Date();
-
-                // Retornar true se a chave estiver válida, false caso contrário
-                document.body.innerText = hoje < dataInicial ? 'true' : 'false';
-            } catch (error) {
-                // Em caso de erro
-                document.body.innerText = 'false';
-                console.error(error);
-            }
+            // Validar data
+            const hoje = new Date();
+            document.body.innerText = hoje < dataInicial ? 'true' : 'false';
+        } catch (error) {
+            document.body.innerText = 'false';
+            console.error("Erro ao validar a chave:", error);
         }
+    }
 
-        // Iniciar a verificação
-        validarChave();
-    </script>
+    // Chamar a validação
+    validarChave();
+</script>
 </body>
 </html>
